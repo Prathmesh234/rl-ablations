@@ -15,9 +15,19 @@ REQUIRED_METRICS = {
     "policy/tokens_clipped_or_masked_pct",
     "grad_norm/policy",
     "time/step_s",
+    "time/step_per_problem_s",
+    "time/generation_s",
+    "time/rollout_s",
+    "time/rollout_per_problem_s",
+    "time/eta_s",
     "time/policy_forward_backward_s",
     "gpu/peak_memory_gb",
 }
+
+
+def cell_source(cell: dict) -> str:
+    source = cell["source"]
+    return "".join(source) if isinstance(source, list) else source
 
 
 def main() -> None:
@@ -36,7 +46,7 @@ def main() -> None:
         notebook = json.loads(path.read_text())
         assert notebook["nbformat"] == 4
         code = "\n".join(
-            cell["source"]
+            cell_source(cell)
             for cell in notebook["cells"]
             if cell["cell_type"] == "code"
         )
@@ -47,9 +57,10 @@ def main() -> None:
         assert "Final answer:" in code
         combined += code
 
-    assert "trainer.train()" in json.loads((ROOT / "notebooks" / "02_grpo.ipynb").read_text())["cells"][-1]["source"]
-    assert "trainer.train()" in json.loads((ROOT / "notebooks" / "03_grpo_dis.ipynb").read_text())["cells"][-1]["source"]
+    assert "trainer.train()" in cell_source(json.loads((ROOT / "notebooks" / "02_grpo.ipynb").read_text())["cells"][-1])
+    assert "trainer.train()" in cell_source(json.loads((ROOT / "notebooks" / "03_grpo_dis.ipynb").read_text())["cells"][-1])
     assert "class ExactAnswerPPOTrainer(PPOTrainer)" in combined
+    assert 'output_dir / "metrics.json"' in combined
     assert "class DISGRPOTrainer(GRPOTrainer)" in combined
     assert "ratio > 1 - self.dis_epsilon_low" in combined
     assert "ratio < 1 + self.dis_epsilon_high" in combined
