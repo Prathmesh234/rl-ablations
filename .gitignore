@@ -6,6 +6,7 @@ __pycache__/
 .ipynb_checkpoints/
 .cache/
 wandb/
+evaluations/results/*.json
 
 checkpoints/**/*.safetensors
 checkpoints/**/optimizer.pt
