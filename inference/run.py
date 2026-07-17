@@ -1,21 +1,20 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
+import os
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MODEL_PATH = ROOT / "checkpoints" / "sft_base"
+DEFAULT_MODEL_PATH = "ppbhatt500/rl-ablations-sft-2026-07-17"
 DEFAULT_PROMPT = "If a box has 12 pencils and 5 are removed, how many pencils remain?"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the fine-tuned GSM8K model.")
     parser.add_argument("prompt", nargs="?", default=DEFAULT_PROMPT)
-    parser.add_argument("--model-path", type=Path, default=DEFAULT_MODEL_PATH)
+    parser.add_argument("--model-path", default=DEFAULT_MODEL_PATH)
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--top-p", type=float, default=1.0)
@@ -24,17 +23,19 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    model_path = args.model_path.expanduser().resolve()
-    if not (model_path / "config.json").exists():
-        raise FileNotFoundError(f"No model checkpoint found at {model_path}")
+    model_path = args.model_path
+    hf_token = os.environ.get("HF_TOKEN")
+    if model_path == DEFAULT_MODEL_PATH and not hf_token:
+        raise RuntimeError("HF_TOKEN is required to load the private SFT checkpoint.")
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required to run this model.")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True, token=hf_token)
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
+        token=hf_token,
     ).to("cuda")
     model.eval()
 
