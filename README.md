@@ -56,6 +56,9 @@ uv run --no-sync --env-file .env python -m evaluations.evaluate_base
 uv run --no-sync --env-file .env python -m evaluations.evaluate_sft
 uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo
 uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo2
+uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo
+uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo_dis
+uv run --no-sync python -m evaluations.compare_results
 ```
 
 See `evaluations/README.md` for the fixed evaluation protocol.
@@ -136,6 +139,13 @@ parameters train.
 
 All runs log to W&B project `swe-rl-ablations` with run names
 `sft-base`, `ppo`, `ppo-2`, `grpo`, `grpo-dis`, and `sao`.
+
+The completed GRPO checkpoints are stored in private Hugging Face repositories:
+
+- `ppbhatt500/rl-ablations-grpo-2026-07-20`, revision
+  `e7f46f9f71edada5fdb19da3da59574671653097`
+- `ppbhatt500/rl-ablations-grpo-dis-2026-07-20`, revision
+  `672d0d82a07ab9d97ed6e1ac071069ec42bb7c9a`
 
 ## References
 

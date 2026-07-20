@@ -39,6 +39,9 @@ def main() -> None:
         ROOT / "evaluations" / "evaluate_sft.py",
         ROOT / "evaluations" / "evaluate_ppo.py",
         ROOT / "evaluations" / "evaluate_ppo2.py",
+        ROOT / "evaluations" / "evaluate_grpo.py",
+        ROOT / "evaluations" / "evaluate_grpo_dis.py",
+        ROOT / "evaluations" / "compare_results.py",
     ]
     for path in evaluation_files:
         ast.parse(path.read_text(), filename=str(path))
@@ -49,6 +52,10 @@ def main() -> None:
     assert '"do_sample": False' in evaluation_code
     assert "checkpoints/ppo-1024-2026-07-17" in evaluation_code
     assert "checkpoints/ppo-2-2026-07-17" in evaluation_code
+    assert "checkpoints/grpo" in evaluation_code
+    assert "checkpoints/grpo-dis" in evaluation_code
+    assert '("GRPO", "grpo.json")' in evaluation_code
+    assert '("GRPO-DIS", "grpo_dis.json")' in evaluation_code
 
     notebooks = sorted((ROOT / "notebooks").glob("*.ipynb"))
     assert [path.name for path in notebooks] == [
@@ -97,6 +104,7 @@ def main() -> None:
     assert "class DISGRPOTrainer(GRPOTrainer)" in combined
     assert "ratio > 1 - self.dis_epsilon_low" in combined
     assert "ratio < 1 + self.dis_epsilon_high" in combined
+    assert combined.count("generation_batch_size = None") == 2
     assert combined.count(HOSTED_SFT_CHECKPOINT) == 5
     assert HOSTED_SFT_CHECKPOINT in (ROOT / "notebooks" / "00_sft.ipynb").read_text()
     assert combined.count('token=hf_token') >= 12
