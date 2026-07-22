@@ -58,18 +58,35 @@ uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo
 uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo2
 uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo
 uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo_dis
+uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo4
+uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo3
+uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo_dis3
 uv run --no-sync python -m evaluations.compare_results
 ```
 
 See `evaluations/README.md` for the fixed evaluation protocol.
 
+Visualize the token-level critic values and GAE decomposition from a PPO 3
+update (the critic values are scalar value estimates, not vocabulary logits):
+
+```bash
+uv run --no-sync python visualizations/plot_gae.py --step 1 --example 0
+uv run --no-sync python visualizations/plot_gae.py --step 8 --problem-index 224 --gamma 0.99 --gae-lambda 0.9
+```
+
+The script writes a six-panel PNG dashboard and a CSV value list under
+`runs/gae_visualizations/`. Use `--list` to show available steps, and pass a
+local tokenizer directory with `--tokenizer checkpoints/ppo` to display token
+strings instead of token IDs.
+
 The pinned `openai/gsm8k` `main` revision provides 7,473 training and 1,319
 test problems. SFT uses 2,048 shuffled training problems for two epochs. PPO
-and PPO 2 use 1,024 shuffled policy-training problems; PPO 2 reserves another
-64 disjoint official-train problems for critic warm-starting. The other RL
-ablations use 256. PPO and PPO 2 evaluate on 256 separate official-test
-examples; the other RL notebooks evaluate on 64. Both PPO notebooks explicitly
-check for overlap between their selected data partitions.
+and the current PPO 4 notebook use 1,024 shuffled policy-training problems;
+PPO 4 reserves another 128 disjoint official-train problems for critic
+warm-starting. The other RL ablations use 256. PPO and PPO 4 evaluate on 256
+separate official-test examples; the other RL notebooks evaluate on 64. Both
+PPO notebooks explicitly check for overlap between their selected data
+partitions.
 
 ## Reward
 
@@ -79,8 +96,20 @@ The model must end with `Final answer: <number>`.
 - incorrect numeric answer: `0`
 - missing/malformed final answer: `-1`
 
-Training solutions may contain reasoning, but reward depends only on exact
-final numeric correctness.
+The latest GRPO, GRPO-DIS, and PPO iterations add two correctness-safe shaping
+rewards. Both are zero unless the completion has a parseable final answer:
+
+- substantive `<think>...</think>` trace: `0.75`
+- completion length: concave growth up to `0.50` at 512 tokens
+
+The think trace must contain at least 64 tokens, three meaningful reasoning
+segments, and explicit arithmetic. The prompts require known quantities,
+arithmetic setup, intermediate calculations, and verification inside
+`<think>...</think>`, followed by the final answer outside the closing tag.
+These runs use a 512-token generation budget for training and notebook
+evaluation. The standalone 256-example benchmark intentionally retains its
+original prompt and 256-token limit so new checkpoints remain comparable with
+the recorded base, SFT, and PPO scores.
 
 ## Expected wall-clock time
 
@@ -90,7 +119,7 @@ Conservative planning ranges for one RTX 6000 Ada 48 GB:
 |---|---:|
 | SFT | 30-90 minutes |
 | PPO | 1-3 hours |
-| PPO 2 | 1-4 hours |
+| PPO 4 | 2-6 hours |
 | GRPO | 2-6 hours |
 | GRPO+DIS | 2-6 hours |
 | SAO | 1-4 hours |
@@ -115,17 +144,17 @@ gradient-bearing forwards are accumulated in chunks of four to fit GPU memory.
 Prompt lengths are measured before model loading and the notebook fails instead
 of silently truncating any prompt beyond the 384-token limit.
 
-PPO 2 preserves the same PPO policy objective and two policy epochs. Before
-policy training, it warms the critic on 64 separate problems using Monte Carlo
-token-return targets rather than targets bootstrapped from a random critic.
+The next PPO iteration remains implemented in `01_ppo_2.ipynb`. PPO 4 uses
+four policy epochs, actor learning rate `2e-6`, critic learning rate `5e-6`,
+KL coefficient `0.02`, and 128 critic warm-start problems. Following SAO's
+token-level GAE formulation, warm-start and policy training now use the same
+fixed-lambda return targets; the separate Monte Carlo target path was removed.
 After every policy optimizer step, it runs `K=2` complete critic
-forward/backward optimizer steps. Its `gae.json` includes warm-start token
-rewards, Monte Carlo returns, initial values, final values, and the normal PPO
-GAE trace.
+forward/backward optimizer steps.
 
 GRPO uses a real TRL 1.8 `GRPOTrainer`, eight generations per problem, classic
-`loss_type="grpo"`, within-group reward standardization, and no KL penalty.
-KL against the frozen SFT model is telemetry only.
+`loss_type="grpo"`, within-group standardization of exact-answer and shaping
+rewards, and no KL penalty. KL against the frozen SFT model is telemetry only.
 
 GRPO+DIS keeps the same GRPO rollout and advantage pipeline but replaces
 ordinary clipping with strict token masking. A token contributes only when
@@ -137,8 +166,10 @@ critic updates before each policy update, critic warm-starting, and a critic
 whose attention parameters are frozen while dense MLP and scalar-head
 parameters train.
 
-All runs log to W&B project `swe-rl-ablations` with run names
-`sft-base`, `ppo`, `ppo-2`, `grpo`, `grpo-dis`, and `sao`.
+All runs log to W&B project `swe-rl-ablations`. The stronger-reward runs are
+named `ppo-4`, `grpo-3`, and `grpo-dis-3`, with matching checkpoint
+directories. Earlier reasoning-shaped runs retain `ppo-3`, `grpo-2`, and
+`grpo-dis-2`.
 
 The completed GRPO checkpoints are stored in private Hugging Face repositories:
 

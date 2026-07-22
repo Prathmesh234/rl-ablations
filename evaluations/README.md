@@ -1,10 +1,10 @@
 # Model evaluations
 
 These scripts compare the untouched Qwen base model, the private SFT checkpoint,
-and the final PPO 1, PPO 2, GRPO, and GRPO-DIS checkpoints under one fixed
-evaluation protocol.
+PPO 1, and the reasoning-shaped PPO/GRPO checkpoints under one fixed evaluation
+protocol.
 
-All six use:
+All evaluators use:
 
 - the same 256 examples from the official GSM8K test split;
 - dataset shuffle seed `17`;
@@ -21,6 +21,9 @@ uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo
 uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo2
 uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo
 uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo_dis
+uv run --no-sync --env-file .env python -m evaluations.evaluate_ppo4
+uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo3
+uv run --no-sync --env-file .env python -m evaluations.evaluate_grpo_dis3
 uv run --no-sync python -m evaluations.compare_results
 ```
 
@@ -35,3 +38,8 @@ evaluations are shown as `not run`.
 The base-model score includes format compliance. A mathematically useful answer
 that does not end with the required final-answer line is classified as malformed,
 matching the reward contract used for training and evaluation.
+
+The latest training notebooks generate up to 512 tokens and request
+`<think>...</think>` traces. This benchmark deliberately keeps the original
+prompt and 256-token completion limit; changing either would invalidate direct
+comparison with the recorded base, SFT, and PPO 1 results.

@@ -10,3 +10,5 @@ evaluations/results/*.json
 
 checkpoints/**/*.safetensors
 checkpoints/**/optimizer.pt
+checkpoints/**/tokenizer.json
+checkpoints/**/gae.json
