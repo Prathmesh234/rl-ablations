@@ -24,9 +24,12 @@ RESULTS = (
     ("Base", "base.json"),
     ("SFT", "sft.json"),
     ("PPO", "ppo.json"),
-    ("PPO 2", "ppo2.json"),
-    ("GRPO", "grpo.json"),
-    ("GRPO-DIS", "grpo_dis.json"),
+    ("PPO 3", "ppo3.json"),
+    ("GRPO 2", "grpo2.json"),
+    ("GRPO-DIS 2", "grpo_dis2.json"),
+    ("PPO 4", "ppo4.json"),
+    ("GRPO 3", "grpo3.json"),
+    ("GRPO-DIS 3", "grpo_dis3.json"),
 )
 
 
