@@ -41,6 +41,9 @@ def main() -> None:
         ROOT / "evaluations" / "evaluate_ppo2.py",
         ROOT / "evaluations" / "evaluate_grpo.py",
         ROOT / "evaluations" / "evaluate_grpo_dis.py",
+        ROOT / "evaluations" / "evaluate_ppo4.py",
+        ROOT / "evaluations" / "evaluate_grpo3.py",
+        ROOT / "evaluations" / "evaluate_grpo_dis3.py",
         ROOT / "evaluations" / "compare_results.py",
     ]
     for path in evaluation_files:
@@ -51,11 +54,18 @@ def main() -> None:
     assert "DEFAULT_SEED = 17" in evaluation_code
     assert '"do_sample": False' in evaluation_code
     assert "checkpoints/ppo-1024-2026-07-17" in evaluation_code
-    assert "checkpoints/ppo-2-2026-07-17" in evaluation_code
-    assert "checkpoints/grpo" in evaluation_code
-    assert "checkpoints/grpo-dis" in evaluation_code
-    assert '("GRPO", "grpo.json")' in evaluation_code
-    assert '("GRPO-DIS", "grpo_dis.json")' in evaluation_code
+    assert 'model="checkpoints/ppo-3"' in evaluation_code
+    assert 'model="checkpoints/grpo-2"' in evaluation_code
+    assert 'model="checkpoints/grpo-dis-2"' in evaluation_code
+    assert '("PPO 3", "ppo3.json")' in evaluation_code
+    assert '("GRPO 2", "grpo2.json")' in evaluation_code
+    assert '("GRPO-DIS 2", "grpo_dis2.json")' in evaluation_code
+    assert 'model="checkpoints/ppo-4"' in evaluation_code
+    assert 'model="checkpoints/grpo-3"' in evaluation_code
+    assert 'model="checkpoints/grpo-dis-3"' in evaluation_code
+    assert '("PPO 4", "ppo4.json")' in evaluation_code
+    assert '("GRPO 3", "grpo3.json")' in evaluation_code
+    assert '("GRPO-DIS 3", "grpo_dis3.json")' in evaluation_code
 
     notebooks = sorted((ROOT / "notebooks").glob("*.ipynb"))
     assert [path.name for path in notebooks] == [
@@ -113,6 +123,36 @@ def main() -> None:
     assert "fix_patch" not in combined
     assert "SequenceMatcher" not in combined
 
+    for notebook_name, run_name, output_path in [
+        ("01_ppo_2.ipynb", "ppo-4", "./checkpoints/ppo-4"),
+        ("02_grpo.ipynb", "grpo-3", "./checkpoints/grpo-3"),
+        ("03_grpo_dis.ipynb", "grpo-dis-3", "./checkpoints/grpo-dis-3"),
+    ]:
+        notebook = json.loads((ROOT / "notebooks" / notebook_name).read_text())
+        code = "\n".join(
+            cell_source(cell)
+            for cell in notebook["cells"]
+            if cell["cell_type"] == "code"
+        )
+        assert "max_completion_tokens = 512" in code
+        assert "think_tag_reward_weight = 0.75" in code
+        assert "length_reward_weight = 0.50" in code
+        assert "length_reward_target_tokens = 512" in code
+        assert "length_reward_exponent = 0.35" in code
+        assert "minimum_think_tokens = 64" in code
+        assert "minimum_reasoning_steps = 3" in code
+        assert "def substantive_think_trace(" in code
+        assert "def think_tag_reward(" in code
+        assert "def length_reward(" in code
+        assert '"role": "system"' in code
+        assert "You MUST solve the problem through a substantive derivation" in code
+        assert "token_count >= minimum_think_tokens" in code
+        assert "len(steps) >= minimum_reasoning_steps" in code
+        assert "has_math_work" in code
+        assert "predicted_number(completion) is not None" in code
+        assert f'wandb_run_name = "{run_name}"' in code
+        assert f'output_path = "{output_path}"' in code
+
     ppo2 = json.loads((ROOT / "notebooks" / "01_ppo_2.ipynb").read_text())
     ppo2_code_cells = [
         cell_source(cell)
@@ -122,17 +162,25 @@ def main() -> None:
     ppo2_code = "\n".join(ppo2_code_cells)
     assert len(ppo2["cells"]) >= 40
     assert max(map(len, ppo2_code_cells)) < 5_000
-    assert "critic_warmstart_problems = 64" in ppo2_code
+    assert "critic_warmstart_problems = 128" in ppo2_code
     assert "train_problems = 1024" in ppo2_code
     assert "eval_problems = 256" in ppo2_code
     assert "critic_updates_per_policy_update = 2" in ppo2_code
+    assert "num_ppo_epochs = 4" in ppo2_code
+    assert "actor_learning_rate = 2e-6" in ppo2_code
+    assert "critic_learning_rate = 5e-6" in ppo2_code
+    assert "kl_coefficient = 0.02" in ppo2_code
     assert "Critic warm-start rows overlap PPO policy-training rows." in ppo2_code
-    assert "returns = monte_carlo_returns(token_rewards, completion_mask)" in ppo2_code
+    assert "monte_carlo_returns" not in ppo2_code
+    assert 'advantages, returns, deltas, raw_advantages = full_gae(' in ppo2_code
     assert "clip_values=False" in ppo2_code
     assert ppo2_code.count(
         "for critic_update_index in range(critic_updates_per_policy_update):"
     ) == 2
-    assert '"monte_carlo_returns": return_rows[row_index]' in ppo2_code
+    assert '"lambda_returns": return_rows[row_index]' in ppo2_code
+    assert '"exact_rewards": exact_rewards' in ppo2_code
+    assert '"think_rewards": think_rewards' in ppo2_code
+    assert '"length_rewards": length_rewards' in ppo2_code
     assert '"initial_values": initial_value_rows[row_index]' in ppo2_code
     assert 'example["final_values"] = values' in ppo2_code
     print(f"validated {len(notebooks)} inline GSM8K notebooks")
